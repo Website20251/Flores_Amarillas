@@ -23,7 +23,7 @@
     #container {
       width: 100vw;
       height: 100vh;
-      background: radial-gradient(circle at center, #111100 0%, #000000 100%);
+      background: #000000;
       position: fixed;
       top: 0;
       left: 0;
@@ -65,6 +65,58 @@
       object-fit: contain;
       animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+
+    #modalMensaje {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #modalMensaje.show {
+      display: flex;
+      opacity: 1;
+    }
+    #tarjetaMensaje {
+      max-width: 340px;
+      width: 85vw;
+      padding: 38px 28px;
+      text-align: center;
+      background: linear-gradient(180deg, #fff6d8, #ffe08a);
+      border: 2px solid #ffb703;
+      border-radius: 18px;
+      box-shadow: 0 0 30px rgba(255, 204, 0, 0.6);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #textoMensaje {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-weight: bold;
+      font-size: 26px;
+      color: #6b4c00;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+      margin-bottom: 22px;
+    }
+    #cerrarMensaje {
+      padding: 10px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      background-color: #ffcc00;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+      transition: transform 0.2s ease;
+    }
+    #cerrarMensaje:active { transform: scale(0.95); }
 
     #cerrarModal {
       margin-top: 20px;
@@ -142,6 +194,13 @@
     <button id="cerrarModal">Cerrar</button>
   </div>
 
+  <div id="modalMensaje">
+    <div id="tarjetaMensaje">
+      <p id="textoMensaje"></p>
+      <button id="cerrarMensaje">Cerrar</button>
+    </div>
+  </div>
+
   <script type="importmap">
     {
       "imports": {
@@ -156,6 +215,7 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
     scene.fog = new THREE.FogExp2(0x000000, 0.0015);
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -192,8 +252,8 @@
     fUrls.forEach(url => {
       for(let k=0; k<15; k++) {
         const tex = getTexture(url);
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
-        
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+
         sprite.position.set(
           (Math.random() - 0.5) * 150,
           (Math.random() - 0.5) * 150,
@@ -278,7 +338,7 @@
       gradient.addColorStop(1, 'rgba(0,0,0,0)');
       context.fillStyle = gradient;
       context.fillRect(0, 0, size, size);
-      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, blending: THREE.AdditiveBlending }));
+      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     }
 
     const centralGlow = createGlowMaterial('rgba(255, 230, 100, 0.8)', 256);
@@ -427,7 +487,7 @@
       ctx.shadowBlur = 20;
       ctx.fillStyle = "#ffffff";
       ctx.fillText(message, 400, 80);
-      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false }));
     }
 
     const mainText = createElegantText("Te amo 💛🌻");
@@ -449,7 +509,7 @@
       context.shadowColor = "#ffaa00";
       context.shadowBlur = 10;
       context.fillText(message, canvas.width / 2, canvas.height / 2);
-      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+      return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false }));
     }
 
     const romanticTexts = [
@@ -496,12 +556,12 @@
       const grupo = new THREE.Group();
 
       const tex = getTexture(item.img);
-      const florSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+      const florSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
       florSprite.scale.set(item.escala, item.escala, 1);
       florSprite.position.set(0, 0.55, 0);
-      if (item.clickeable) {
-        florSprite.userData = { esClickeable: true, cartaUrl: item.cartaUrl };
-      }
+      florSprite.userData = item.clickeable
+        ? { esClickeable: true, tipo: 'imagen', cartaUrl: item.cartaUrl }
+        : { esClickeable: true, tipo: 'mensaje', mensaje: item.msg };
       grupo.add(florSprite);
 
       const etiqueta = createSmallTextSprite(item.msg);
@@ -531,10 +591,13 @@
     const modalCarta = document.getElementById('modalCarta');
     const cartaImg = document.getElementById('cartaImg');
     const cerrarModal = document.getElementById('cerrarModal');
+    const modalMensaje = document.getElementById('modalMensaje');
+    const textoMensaje = document.getElementById('textoMensaje');
+    const cerrarMensaje = document.getElementById('cerrarMensaje');
     let isModalOpen = false;
 
     window.addEventListener('pointerdown', (event) => {
-      if(isModalOpen) return; 
+      if(isModalOpen) return;
 
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -545,9 +608,14 @@
 
       if (intersects.length > 0) {
         const objetoTocado = intersects[0].object;
-        
-        if (objetoTocado.userData && objetoTocado.userData.esClickeable) {
-          abrirCarta(objetoTocado.userData.cartaUrl);
+        const datos = objetoTocado.userData;
+
+        if (datos && datos.esClickeable) {
+          if (datos.tipo === 'imagen') {
+            abrirCarta(datos.cartaUrl);
+          } else if (datos.tipo === 'mensaje') {
+            abrirMensaje(datos.mensaje);
+          }
         }
       }
     });
@@ -558,6 +626,19 @@
       isModalOpen = true;
       controls.enabled = false;
     }
+
+    function abrirMensaje(msg) {
+      textoMensaje.textContent = msg;
+      modalMensaje.classList.add('show');
+      isModalOpen = true;
+      controls.enabled = false;
+    }
+
+    cerrarMensaje.addEventListener('click', () => {
+      modalMensaje.classList.remove('show');
+      isModalOpen = false;
+      if (stage === 3) controls.enabled = true;
+    });
 
     cerrarModal.addEventListener('click', () => {
       modalCarta.classList.remove('show');
